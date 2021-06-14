@@ -1,0 +1,315 @@
+---
+openapi: 3.0.0
+info:
+  title: KnowGo Consent Management API
+  description: The KnowGo Consent Management API, implementing the Kantara Initiative Consent Receipt Specification.
+  contact:
+    name: Adaptant Labs
+    email: labs@adaptant.io
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 0.0.1
+servers:
+- url: https://virtserver.swaggerhub.com/Adaptant/knowgo-consent-api/0.0.1
+  description: SwaggerHub API Auto Mocking
+- url: https://virtserver.swaggerhub.com/Adaptant/consent/0.0.1
+  description: SwaggerHub API Auto Mocking
+- url: https://api.knowgo.io/v1
+  description: Production instance
+tags:
+- name: consent
+  description: Consent Receipt Management
+- name: categories
+  description: Data Categories
+- name: purposes
+  description: Data Processing Purposes
+paths:
+  /consents/categories:
+    get:
+      tags:
+      - categories
+      summary: List supported data categories
+      responses:
+        "200":
+          description: A JSON array of category types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /consents/categories/{categoryId}:
+    get:
+      tags:
+      - categories
+      summary: Get information about a specific data category
+      parameters:
+      - name: categoryId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          description: ID number of data category
+      responses:
+        "200":
+          description: A JSON object detailing the Data Category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataCategory'
+  /consents/introspect:
+    post:
+      tags:
+      - consent
+      summary: Introspect a consent token
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/body'
+      responses:
+        "200":
+          description: Token valid
+        "401":
+          description: Unauthorized
+        "400":
+          description: Invalid token specification
+        "404":
+          description: Consent not found
+  /consents/purposes:
+    get:
+      tags:
+      - purposes
+      summary: List supported purposes of processing
+      responses:
+        "200":
+          description: A JSON array of processing purposes
+          content:
+            aplication/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /consents/purposes/{purposeId}:
+    get:
+      tags:
+      - purposes
+      summary: Get information about a specific purpose of processing
+      parameters:
+      - name: purposeId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          description: ID number of processing purpose
+      responses:
+        "200":
+          description: A JSON object detailing the Purpose of Processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purpose'
+  /consents:
+    get:
+      tags:
+      - consent
+      summary: List all consent receipts
+      operationId: listConsentReceipts
+      responses:
+        "200":
+          description: List of consent receipts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConsentReceipt'
+    post:
+      tags:
+      - consent
+      summary: Add a new consent receipt
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentReceipt'
+        required: true
+      responses:
+        "201":
+          description: Consent receipt successfully added
+        "401":
+          description: Unauthorized
+  /consents/receipts/{receiptId}:
+    get:
+      tags:
+      - consent
+      summary: Fetch a consent receipt
+      operationId: getConsentReceipt
+      parameters:
+      - name: receiptId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          description: Consent Receipt ID
+          format: uuid
+      responses:
+        "200":
+          description: A JSON-encoded consent receipt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentReceipt'
+    delete:
+      tags:
+      - consent
+      summary: Revoke consent
+      operationId: revokeConsentReceipt
+      parameters:
+      - name: receiptId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          description: Consent Receipt ID
+          format: uuid
+      responses:
+        "200":
+          description: Consent successfully revoked
+        "401":
+          description: Unauthorized
+  /consents/receipts/{receiptId}/supersede/{newReceiptId}:
+    post:
+      tags:
+      - consent
+      summary: Replace a consent receipt with a newer consent
+      operationId: updateConsentReceipt
+      parameters:
+      - name: receiptId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          description: Consent Receipt ID
+          format: uuid
+      - name: newReceiptId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          description: Replacement Consent Receipt ID
+          format: uuid
+      responses:
+        "200":
+          description: Consent receipt successfully superseded
+        "401":
+          description: Unauthorized
+        "404":
+          description: Invalid consent receipt specification
+  /consents/receipts/{receiptId}/token:
+    get:
+      tags:
+      - consent
+      summary: Fetch a consent receipt token
+      operationId: getConsentReceiptToken
+      parameters:
+      - name: receiptId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          description: Consent Receipt ID
+          format: uuid
+      responses:
+        "200":
+          description: Consent token successfully generated
+        "401":
+          description: Unauthorized
+components:
+  schemas:
+    ConsentReceipt:
+      properties:
+        receiptId:
+          type: string
+          description: Consent Receipt ID
+          format: uuid
+    DataCategory:
+      properties:
+        categoryId:
+          type: integer
+          description: ID of data category
+        category:
+          type: string
+          description: Name of data category
+    Purpose:
+      properties:
+        purposeId:
+          type: integer
+          description: ID of processing purpose
+        purpose:
+          type: string
+          description: Name of purpose
+        description:
+          type: string
+          description: Description of purpose
+    body:
+      required:
+      - token
+      type: object
+      properties:
+        token:
+          type: string
+  parameters:
+    receiptId:
+      name: receiptId
+      in: path
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        description: Consent Receipt ID
+        format: uuid
+    newReceiptId:
+      name: newReceiptId
+      in: path
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        description: Replacement Consent Receipt ID
+        format: uuid
+    categoryId:
+      name: categoryId
+      in: path
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: integer
+        description: ID number of data category
+    purposeId:
+      name: purposeId
+      in: path
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: integer
+        description: ID number of processing purpose
