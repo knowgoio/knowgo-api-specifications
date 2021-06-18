@@ -1,0 +1,301 @@
+openapi: '3.0.0'
+info:
+  title: KnowGo Score API
+  version: '0.0.3'
+  description: >-
+    KnowGo Score provides a dedicated Scoring microservice capable of working on
+    a variety of datasources at a variety of resolutions across a range of
+    pluggable scorers, each with their own weighting. KnowGo Score makes use of
+    Ensemble Learning methods in order to calculate a Score across a range of
+    scorers, a subset of which may be applied in the calculation of any
+    particular Score, dependent upon data availability. Weighted averaging is
+    further employed in order to allow criteria-specific assessment to be
+    weighted independently, and to ensure that Scores remain reasonably
+    approximate across periodic changes in data availability and disclosure.
+  contact:
+    name: Adaptant Labs
+    email: labs@adaptant.io
+    url: 'https://www.adaptant.io/research'
+tags:
+  - name: score
+    description: Scoring operations
+  - name: scorers
+    description: Scorer operations
+paths:
+  '/score/drivers/{driverId}':
+    parameters:
+      - in: query
+        description: Date to end Scoring at
+        name: untilDate
+        schema:
+          type: string
+      - in: query
+        description: Date to begin Scoring from
+        name: fromDate
+        schema:
+          type: string
+      - in: path
+        description: ID of Driver to Score
+        name: driverId
+        required: true
+        schema:
+          type: integer
+    get:
+      responses:
+        '200':
+          description: Driver Successfully Scored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+        '416':
+          description: Invalid date range specified
+        '400':
+          description: Invalid scoring request
+        '404':
+          description: Driver not found
+      summary: Provide an overall Score for a specific Driver
+      operationId: getScoreByDriverId
+      tags:
+        - score
+  /score/journeys:
+    post:
+      responses:
+        '200':
+          description: Journeys Successfully Scored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+        '400':
+          description: Invalid scoring request
+      summary: Provide a Score for provided Journey data
+      operationId: scoreJourneys
+      requestBody:
+        description: Journey data to score
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Journey'
+      tags:
+        - score
+  '/score/journeys/{journeyId}':
+    parameters:
+      - in: path
+        description: ID of Journey to Score
+        name: journeyId
+        required: true
+        schema:
+          type: string
+    get:
+      responses:
+        '200':
+          description: Journey Successfully Scored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+        '400':
+          description: Invalid scoring request
+        '404':
+          description: Journey not found
+      summary: Provide a Score for a specific Journey
+      operationId: scoreJourneyById
+      tags:
+        - score
+  /scorers:
+    post:
+      responses:
+        '201':
+          description: Scorer(s) successfully activated
+      summary: Activate one or more Scorer(s)
+      operationId: activateScorer
+      tags:
+        - scorers
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                properties:
+                  scorers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScorerList'
+      summary: Get a list of all Scorers registered with the platform
+      operationId: listScorers
+      tags:
+        - scorers
+  '/scorers/{scorer}':
+    parameters:
+      - in: path
+        description: Name of Scorer to operate on
+        name: scorer
+        required: true
+        schema:
+          type: string
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scorer'
+      summary: Provide information about a specific Scorer
+      operationId: getScorerDetail
+      tags:
+        - scorers
+    put:
+      responses:
+        '200':
+          description: Success
+      summary: Update the weighting of a given Scorer
+      operationId: updateScorerWeighting
+      requestBody:
+        description: Scorer weighting
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WeightingModel'
+      tags:
+        - scorers
+    delete:
+      responses:
+        '200':
+          description: Success
+      summary: Deactivate a specified Scorer
+      operationId: deactivateScorer
+      tags:
+        - scorers
+components:
+  schemas:
+    Score:
+      properties:
+        id:
+          type: string
+          description: ID of Journey scored
+        score:
+          type: number
+          description: Score
+          example: 80.23
+          minimum: 0
+          maximum: 100
+        level:
+          type: string
+          description: Score Level
+          example: High
+          enum:
+            - Unscorable
+            - Negligible
+            - Minor
+            - Moderate
+            - High
+        num_journeys:
+          type: integer
+          description: Number of Journeys included in calculation
+        confidence:
+          type: number
+          description: Overall confidence score
+          example: 75
+          minimum: 0
+          maximum: 100
+        fromDate:
+          type: string
+          format: date
+          description: Start date of data to score
+          example: '2019-01-01'
+        untilDate:
+          type: string
+          format: date
+          description: End date of data to score
+          example: '2019-12-31'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreClassification'
+      type: object
+    ScoreClassification:
+      properties:
+        scorer:
+          type: string
+          description: Name of Scorer run
+          example: JourneyDurationDetector
+        score:
+          type: number
+          description: Score provided by the Scorer
+          example: 50
+          minimum: 0
+          maximum: 100
+        weight:
+          type: integer
+          description: Weighting applied for the Scorer
+          example: 50
+          minimum: 0
+          maximum: 100
+        confidence:
+          type: number
+          description: Confidence score returned by the Scorer
+          example: 75
+          minimum: 0
+          maximum: 100
+      type: object
+    Journey:
+      properties:
+        DriverID:
+          type: integer
+          description: Driver ID
+        AutoID:
+          type: integer
+          description: Auto ID
+        JourneyID:
+          type: string
+          description: JourneyID
+        JourneyBegin:
+          type: string
+          format: date-time
+          description: Journey start time
+        JourneyEnd:
+          type: string
+          format: date-time
+          description: Journey end time
+      type: object
+    WeightingModel:
+      properties:
+        weighting:
+          type: integer
+          description: Weighting applied for the Scorer in the combined Score
+          example: '50'
+      type: object
+    Scorer:
+      properties:
+        name:
+          type: string
+          description: Short name of the Scorer
+          example: JourneyDurationDetector
+        description:
+          type: string
+          description: A brief description of the Scorer
+          example: A linear regression model implementing Regulation (EC) No 561/2006
+        weighting:
+          type: integer
+          description: Weighting applied for the Scorer in the combined Score
+          example: '50'
+      type: object
+    ScorerList:
+      properties:
+        active:
+          type: array
+          items:
+            type: string
+            description: Short name of the Scorer
+            example: JourneyDurationDetector
+        available:
+          type: array
+          items:
+            type: string
+            description: Short name of the Scorer
+            example: NightDrivingDetector
+      type: object
