@@ -54,7 +54,7 @@ paths:
           description: Invalid scoring request
         '404':
           description: Driver not found
-      summary: Provide an overall Score for a specific Driver
+      summary: Obtain an overall Score for a specific Driver
       operationId: getScoreByDriverId
       tags:
         - score
@@ -69,7 +69,7 @@ paths:
                 $ref: '#/components/schemas/Score'
         '400':
           description: Invalid scoring request
-      summary: Provide a Score for provided Journey data
+      summary: Obtain a Score for provided Journey data
       operationId: scoreJourneys
       requestBody:
         description: Journey data to score
@@ -99,19 +99,28 @@ paths:
           description: Invalid scoring request
         '404':
           description: Journey not found
-      summary: Provide a Score for a specific Journey
+      summary: Obtain a Score for a specific Journey
       operationId: scoreJourneyById
       tags:
         - score
   /scorers:
     post:
-      responses:
-        '201':
-          description: Scorer(s) successfully activated
       summary: Activate one or more Scorer(s)
       operationId: activateScorer
       tags:
         - scorers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScorerActivationList'
+      responses:
+        '201':
+          description: Scorer(s) successfully activated
+        '403':
+          description: Permission denied
+        '404':
+          description: Scorer(s) not found
     get:
       responses:
         '200':
@@ -143,8 +152,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Scorer'
-      summary: Provide information about a specific Scorer
+                $ref: '#/components/schemas/ScorerDetail'
+      summary: Obtain information about a specific Scorer
       operationId: getScorerDetail
       tags:
         - scorers
@@ -165,7 +174,11 @@ paths:
     delete:
       responses:
         '200':
-          description: Success
+          description: Scorer successfully deactivated
+        '403':
+          description: Permission denied
+        '404':
+          description: Scorer not found
       summary: Deactivate a specified Scorer
       operationId: deactivateScorer
       tags:
@@ -269,7 +282,7 @@ components:
           description: Weighting applied for the Scorer in the combined Score
           example: '50'
       type: object
-    Scorer:
+    ScorerDetail:
       properties:
         name:
           type: string
@@ -284,6 +297,17 @@ components:
           description: Weighting applied for the Scorer in the combined Score
           example: '50'
       type: object
+    ScorerActivationList:
+      type: object
+      required:
+      - scorers
+      properties:
+        scorers:
+          uniqueItems: true
+          type: array
+          items:
+            type: string
+            example: JourneyDurationDetector
     ScorerList:
       properties:
         active:
