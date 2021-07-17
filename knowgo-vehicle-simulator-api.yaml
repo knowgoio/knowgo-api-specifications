@@ -1,7 +1,11 @@
----
 openapi: 3.0.0
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/KnowGo/knowgo-vehicle-simulator-api/1.1.1
+  - description: Local Simulation Environment
+    url: http://localhost:8086
 info:
-  title: KnowGo Vehicle Simulator API
   description: |
     This is a simple API for interacting with the KnowGo Vehicle Simulator. It
     provides mechanisms for starting/stopping the simulated vehicle, sending
@@ -15,84 +19,80 @@ info:
 
     Fine-grained access to vehicle data is provided through ISO 20078
     Extended Vehicle (ExVe)-compatible API endpoints.
+  version: 1.1.1
+  title: KnowGo Vehicle Simulator API
   contact:
     email: labs@adaptant.io
   license:
     name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.1.0
-servers:
-- url: http://localhost:8086
-  description: Local Simulation Environment
-- url: https://virtserver.swaggerhub.com/Adaptant/knowgo-vehicle-simulator-api/1.1.0
-  description: SwaggerHub API Auto Mocking
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
 tags:
-- name: simulator
-  description: Vehicle Simulator APIs
-- name: exve
-  description: ISO 20078 Extended Vehicle (ExVe) APIs
+  - name: simulator
+    description: Vehicle Simulator APIs
+  - name: exve
+    description: ISO 20078 Extended Vehicle (ExVe) APIs
 paths:
-  /simulator/start:
+  '/simulator/start':
     post:
       tags:
-      - simulator
+        - simulator
       summary: start the simulated vehicle
-      description: Starts the running of the vehicle within the simulator
       operationId: vehicleStart
+      description: Starts the running of the vehicle within the simulator
       responses:
-        "200":
+        '200':
           description: OK
-  /simulator/stop:
+  '/simulator/stop':
     post:
       tags:
-      - simulator
+        - simulator
       summary: stop the simulated vehicle
-      description: Stops the running of the vehicle within the simulator
       operationId: vehicleStop
+      description: Stops the running of the vehicle within the simulator
       responses:
-        "200":
+        '200':
           description: OK
-  /simulator/notification:
+  '/simulator/notification':
     post:
       tags:
-      - simulator
+        - simulator
       summary: send a notification to the simulated vehicle
-      description: Sends a notification to the simulated vehicle
       operationId: vehicleNotify
+      description: Sends a notification to the simulated vehicle
       requestBody:
         description: Notification text to display
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/VehicleNotification'
-        required: true
       responses:
-        "200":
+        '200':
           description: OK
-  /simulator/info:
+  '/simulator/info':
     get:
       tags:
-      - simulator
+        - simulator
       summary: information about the simulated vehicle
-      description: Obtain detailed information about the simulated vehicle.
       operationId: getVehicleInfo
+      description: Obtain detailed information about the simulated vehicle.
       responses:
-        "200":
+        '200':
           description: vehicle details
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VehicleDetail'
-  /simulator/events:
+  '/simulator/events':
     get:
       tags:
-      - simulator
+        - simulator
       summary: get simulated vehicle events
+      operationId: getVehicleEvents
       description: |
         Obtain detailed events from the simulated vehicle in its running state.
-      operationId: getVehicleEvents
       responses:
-        "200":
+        '200':
           description: vehicle events
           content:
             application/json:
@@ -102,13 +102,13 @@ paths:
                   $ref: '#/components/schemas/VehicleEvent'
     post:
       tags:
-      - simulator
+        - simulator
       summary: apply events to the simulated vehicle
+      operationId: addVehicleEvents
       description: |
         Submit a list of vehicle events to apply to the simulated vehicle. This
         can be used for digital twinning, where the simulation model state can
         be synchronized with external data sources.
-      operationId: addVehicleEvents
       requestBody:
         description: Vehicle events to apply to the simulated vehicle
         content:
@@ -118,16 +118,16 @@ paths:
               items:
                 $ref: '#/components/schemas/VehicleEvent'
       responses:
-        "201":
+        '201':
           description: Events successfully added
-  /simulator/webhooks:
+  '/simulator/webhooks':
     get:
       tags:
-      - simulator
+        - simulator
       summary: get a list of available event triggers
       operationId: getAvailableEventTriggers
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
@@ -135,142 +135,184 @@ paths:
                 $ref: '#/components/schemas/Webhooks'
     post:
       tags:
-      - simulator
+        - simulator
       summary: register a new event-triggered webhook
       operationId: registerWebhook
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/body'
-        required: true
-      responses:
-        "201":
-          description: Webhook registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookSubscription'
+              type: object
+              required:
+                - webhooks
+                - notificationUrl
+              properties:
+                webhooks:
+                  $ref: '#/components/schemas/Webhooks'
+                notificationUrl:
+                  type: string
+                  format: uri
+                  example: https://myserver/endpoint
       callbacks:
+        automation_level_changed:
+          '{$request.body#/notificationUrl}':
+            post:
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required:
+                        - automation_level_changed
+                      properties:
+                        automation_level_changed:
+                          $ref: '#/components/schemas/AutomationLevelChange'
+              responses:
+                '200':
+                  description: Notification accepted
+        driver_changed:
+          '{$request.body#/notificationUrl}':
+            post:
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required:
+                        - driver_changed
+                      properties:
+                        driver_changed:
+                          $ref: '#/components/schemas/DriverChange'
+              responses:
+                '200':
+                  description: Notification accepted
         journey_begin:
           '{$request.body#/notificationUrl}':
             post:
               requestBody:
+                required: true
                 content:
                   application/json:
                     schema:
-                      required:
-                      - journey_begin
                       type: object
+                      required:
+                        - journey_begin
                       properties:
                         journey_begin:
                           $ref: '#/components/schemas/JourneyChange'
-                required: true
               responses:
-                "200":
+                '200':
                   description: Notification accepted
         journey_end:
           '{$request.body#/notificationUrl}':
             post:
               requestBody:
+                required: true
                 content:
                   application/json:
                     schema:
-                      required:
-                      - journey_end
                       type: object
+                      required:
+                        - journey_end
                       properties:
                         journey_end:
                           $ref: '#/components/schemas/JourneyChange'
-                required: true
               responses:
-                "200":
+                '200':
                   description: Notification accepted
         location_changed:
           '{$request.body#/notificationUrl}':
             post:
               requestBody:
+                required: true
                 content:
                   application/json:
                     schema:
-                      required:
-                      - location_changed
                       type: object
+                      required:
+                        - location_changed
                       properties:
                         location_changed:
                           $ref: '#/components/schemas/LocationChange'
-                required: true
               responses:
-                "200":
+                '200':
                   description: Notification accepted
         ignition_changed:
           '{$request.body#/notificationUrl}':
             post:
               requestBody:
+                required: true
                 content:
                   application/json:
                     schema:
-                      required:
-                      - ignition_changed
                       type: object
+                      required:
+                        - ignition_changed
                       properties:
                         ignition_changed:
                           $ref: '#/components/schemas/IgnitionChange'
-                required: true
               responses:
-                "200":
+                '200':
                   description: Notification accepted
         harsh_acceleration:
           '{$request.body#/notificationUrl}':
             post:
               requestBody:
+                required: true
                 content:
                   application/json:
                     schema:
-                      required:
-                      - harsh_acceleration
                       type: object
+                      required:
+                        - harsh_acceleration
                       properties:
                         harsh_acceleration:
                           $ref: '#/components/schemas/HarshPedalEvent'
-                required: true
               responses:
-                "200":
+                '200':
                   description: Notification accepted
         harsh_braking:
           '{$request.body#/notificationUrl}':
             post:
               requestBody:
+                required: true
                 content:
                   application/json:
                     schema:
-                      required:
-                      - harsh_braking
                       type: object
+                      required:
+                        - harsh_braking
                       properties:
                         harsh_braking:
                           $ref: '#/components/schemas/HarshPedalEvent'
-                required: true
               responses:
-                "200":
+                '200':
                   description: Notification accepted
-  /simulator/webhooks/{subscriptionId}:
+      responses:
+        '201':
+          description: Webhook registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+  '/simulator/webhooks/{subscriptionId}':
     get:
       tags:
-      - simulator
+        - simulator
       summary: get information about a registered webhook
       operationId: getWebhookById
       parameters:
-      - name: subscriptionId
-        in: path
-        description: Subscription ID of the webhook to get
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: string
+        - in: path
+          name: subscriptionId
+          schema:
+            type: string
+          required: true
+          description: Subscription ID of the webhook to get
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
@@ -278,55 +320,61 @@ paths:
                 $ref: '#/components/schemas/Webhooks'
     put:
       tags:
-      - simulator
+        - simulator
       summary: update a registered webhook
       operationId: updateWebhookById
       parameters:
-      - name: subscriptionId
-        in: path
-        description: Subscription ID of the webhook to update
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: string
+        - in: path
+          name: subscriptionId
+          schema:
+            type: string
+          required: true
+          description: Subscription ID of the webhook to update
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/body_1'
-        required: true
+              type: object
+              required:
+                - webhooks
+                - notificationUrl
+              properties:
+                webhooks:
+                  $ref: '#/components/schemas/Webhooks'
+                notificationUrl:
+                  type: string
+                  format: uri
+                  example: https://myserver/endpoint
       responses:
-        "200":
+        '200':
           description: Webhook updated
-        "404":
+        '404':
           description: Webhook subscription not found
     delete:
       tags:
-      - simulator
+        - simulator
       summary: unregister a webhook
       operationId: unregisterWebhook
       parameters:
-      - name: subscriptionId
-        in: path
-        description: Subscription ID of the webhook to unregister
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: string
+        - in: path
+          name: subscriptionId
+          schema:
+            type: string
+          required: true
+          description: Subscription ID of the webhook to unregister
       responses:
-        "200":
+        '200':
           description: Webhook unregistered
-  /exve/vehicles:
+  '/exve/vehicles':
     get:
       tags:
-      - exve
+        - exve
       summary: get list of vehicles available
-      description: Obtain a list of vehicles available to the accessing party
       operationId: getVehicles
+      description: Obtain a list of vehicles available to the accessing party
       responses:
-        "200":
+        '200':
           description: list of available vehicles
           content:
             application/json:
@@ -334,171 +382,203 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/VehicleID'
-  /exve/vehicles/{vehicleId}:
+  '/exve/vehicles/{vehicleId}':
     get:
       tags:
-      - exve
+        - exve
       summary: get information about a specific vehicle
-      description: Obtain detailed information about a specific vehicle
-      operationId: getVehicleInfoById
       parameters:
-      - name: vehicleId
-        in: path
-        description: Numeric ID of the vehicle to get
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: integer
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle to get
+      operationId: getVehicleInfoById
+      description: Obtain detailed information about a specific vehicle
       responses:
-        "200":
+        '200':
           description: vehicle details
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VehicleDetail'
-  /exve/vehicles/{vehicleId}/capabilities:
+  '/exve/vehicles/{vehicleId}/capabilities':
     get:
       tags:
-      - exve
+        - exve
       summary: get the capabilities of a specific vehicle
+      parameters:
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle to get
+      operationId: getVehicleCapabilitiesById
       description: |
         Obtain a list of capabilities of a specific vehicle
-      operationId: getVehicleCapabilitiesById
-      parameters:
-      - name: vehicleId
-        in: path
-        description: Numeric ID of the vehicle to get
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: integer
       responses:
-        "200":
+        '200':
           description: vehicle capabilities
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VehicleExVeResources'
-  /exve/vehicles/{vehicleId}/resources:
+  '/exve/vehicles/{vehicleId}/resources':
     get:
       tags:
-      - exve
+        - exve
       summary: get the available resources a specific vehicle
+      parameters:
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle to get
+      operationId: getVehicleResourcesById
       description: |
         Obtain a list of available resources for a specific vehicle
-      operationId: getVehicleResourcesById
-      parameters:
-      - name: vehicleId
-        in: path
-        description: Numeric ID of the vehicle to get
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: integer
       responses:
-        "200":
+        '200':
           description: available resources
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VehicleExVeResources'
-  /exve/vehicles/{vehicleId}/notification:
+  '/exve/vehicles/{vehicleId}/notification':
     post:
       tags:
-      - exve
+        - exve
       summary: send a notification to a specific vehicle
-      description: Sends a notification to a specific vehicle
-      operationId: vehicleNotifyById
       parameters:
-      - name: vehicleId
-        in: path
-        description: Numeric ID of the vehicle
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: integer
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle
+      operationId: vehicleNotifyById
+      description: Sends a notification to a specific vehicle
       requestBody:
         description: Notification text to display
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/VehicleNotification'
-        required: true
       responses:
-        "200":
+        '200':
           description: OK
-  /exve/vehicles/{vehicleId}/acceleratorPedalPositions:
+  '/exve/vehicles/{vehicleId}/acceleratorPedalPositions':
     get:
       tags:
-      - exve
+        - exve
       summary: get the accelerator pedal positions for a specific vehicle
+      parameters:
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle to get
+      operationId: getAcceleratorPedalPositionsById
       description: |
         Obtain a list of changes in accelerator pedal positions for a specific
         vehicle.
-      operationId: getAcceleratorPedalPositionsById
-      parameters:
-      - name: vehicleId
-        in: path
-        description: Numeric ID of the vehicle to get
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: integer
       responses:
-        "200":
+        '200':
           description: accelerator pedal positions
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AcceleratorPedalPositions'
-  /exve/vehicles/{vehicleId}/odometers:
+  '/exve/vehicles/{vehicleId}/automationLevels':
     get:
       tags:
-      - exve
+        - exve
+      summary: get the automation levels for a specific vehicle
+      parameters:
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle to get
+      operationId: getAutomationLevelsById
+      description: |
+        Obtain a list of changes in SAE J3016 automation levels for a specific
+        vehicle.
+      responses:
+        '200':
+          description: automation levels
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutomationLevels'
+  '/exve/vehicles/{vehicleId}/brakePedalPositions':
+    get:
+      tags:
+        - exve
+      summary: get the brake pedal positions for a specific vehicle
+      parameters:
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle to get
+      operationId: getBrakePedalPositionsById
+      description: |
+        Obtain a list of changes in brake pedal positions for a specific
+        vehicle.
+      responses:
+        '200':
+          description: brake pedal positions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrakePedalPositions'
+  '/exve/vehicles/{vehicleId}/odometers':
+    get:
+      tags:
+        - exve
       summary: get the odometer values for a specific vehicle
+      parameters:
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle to get
+      operationId: getOdometersById
       description: |
         Obtain a list of changes in odometer readings for a specific vehicle.
-      operationId: getOdometersById
-      parameters:
-      - name: vehicleId
-        in: path
-        description: Numeric ID of the vehicle to get
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: integer
       responses:
-        "200":
+        '200':
           description: odometer readings
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Odometers'
-  /exve/vehicles/{vehicleId}/locations:
+  '/exve/vehicles/{vehicleId}/locations':
     get:
       tags:
-      - exve
+        - exve
       summary: get the locations for a specific vehicle
+      parameters:
+        - in: path
+          name: vehicleId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the vehicle to get
+      operationId: getLocationsById
       description: |
         Obtain a list of changes in geolocation for a specific vehicle.
-      operationId: getLocationsById
-      parameters:
-      - name: vehicleId
-        in: path
-        description: Numeric ID of the vehicle to get
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: integer
       responses:
-        "200":
+        '200':
           description: vehicle locations
           content:
             application/json:
@@ -507,9 +587,9 @@ paths:
 components:
   schemas:
     VehicleDetail:
-      required:
-      - AutoID
       type: object
+      required:
+        - AutoID
       properties:
         AutoID:
           type: integer
@@ -525,21 +605,21 @@ components:
           format: int64
         Name:
           type: string
-          example: My Car
+          example: 'My Car'
         Make:
           type: string
-          example: Opel
+          example: 'Opel'
         Model:
           type: string
-          example: Astra
+          example: 'Astra'
         Year:
           type: integer
         VIN:
-          maxLength: 17
-          minLength: 0
           type: string
-          description: Vehicle identification number in accordance with ISO 3779:2009
-          example: WP0ZZZ99ZTS392124
+          description: 'Vehicle identification number in accordance with ISO 3779:2009'
+          minLength: 0
+          maxLength: 17
+          example: 'WP0ZZZ99ZTS392124'
         LicensePlate:
           type: string
         RegistrationExpiry:
@@ -548,45 +628,45 @@ components:
         FuelCapacity:
           type: string
         Odometer:
-          maximum: 16777214
-          minimum: 0
           type: number
           format: double
+          minimum: 0
+          maximum: 16777214
         PolicyID:
           type: string
         Notes:
           type: string
-          description: Optional field to enter owner notes about the vehicle
-          example: My work car
+          description: 'Optional field to enter owner notes about the vehicle'
+          example: 'My work car'
         PhotoUrls:
           type: array
           items:
             type: string
-            example: http://www.example.com/images/mycar.png
+            example: 'http://www.example.com/images/mycar.png'
         DriveTrain:
+          type: string
+          minLength: 3
           maxLength: 10
-          minLength: 3
-          type: string
         EngineType:
-          maxLength: 30
-          minLength: 3
           type: string
+          minLength: 3
+          maxLength: 30
         ExteriorColor:
-          maxLength: 30
-          minLength: 3
           type: string
+          minLength: 3
+          maxLength: 30
         InteriorColor:
-          maxLength: 30
-          minLength: 3
           type: string
+          minLength: 3
+          maxLength: 30
         Transmission:
-          maxLength: 30
-          minLength: 3
           type: string
+          minLength: 3
+          maxLength: 30
     VehicleEvent:
-      required:
-      - EventID
       type: object
+      required:
+        - EventID
       properties:
         EventID:
           type: integer
@@ -596,118 +676,128 @@ components:
         AutoID:
           type: integer
           format: int64
+        DriverID:
+          type: integer
+          format: int64
         EventCategoryID:
           type: integer
           format: int32
+        automation_level:
+          type: integer
+          minimum: 0
+          maximum: 5
+          description: SAE J3016 automation level.
         steering_wheel_angle:
-          maximum: 600
+          type: number
+          format: float
           minimum: -600
-          type: number
-          format: float
+          maximum: 600
         torque_at_transmission:
-          maximum: 1500
+          type: number
+          format: float
           minimum: -500
-          type: number
-          format: float
+          maximum: 1500
         engine_speed:
+          type: number
+          format: float
+          minimum: 0
           maximum: 16382
-          minimum: 0
-          type: number
-          format: float
         vehicle_speed:
+          type: number
+          format: float
+          minimum: 0
           maximum: 655
-          minimum: 0
-          type: number
-          format: float
         accelerator_pedal_position:
-          maximum: 100
-          minimum: 0
           type: number
           format: float
+          minimum: 0
+          maximum: 100
         parking_brake_status:
           type: string
           enum:
-          - "true"
-          - "false"
+            - 'true'
+            - 'false'
         brake_pedal_status:
           type: string
           enum:
-          - "true"
-          - "false"
+            - 'true'
+            - 'false'
         transmission_gear_position:
           type: string
           enum:
-          - first
-          - second
-          - third
-          - fourth
-          - fifth
-          - sixth
-          - seventh
-          - eighth
-          - ninth
-          - tenth
-          - reverse
-          - neutral
+            - first
+            - second
+            - third
+            - fourth
+            - fifth
+            - sixth
+            - seventh
+            - eighth
+            - ninth
+            - tenth
+            - reverse
+            - neutral
         gear_lever_position:
           type: string
           enum:
-          - drive
-          - sport
-          - low
-          - first
-          - second
-          - third
-          - fourth
-          - fifth
-          - sixth
-          - seventh
-          - eighth
-          - ninth
-          - tenth
-          - reverse
-          - neutral
+            - drive
+            - sport
+            - low
+            - first
+            - second
+            - third
+            - fourth
+            - fifth
+            - sixth
+            - seventh
+            - eighth
+            - ninth
+            - tenth
+            - reverse
+            - neutral
         odometer:
-          maximum: 16777214
-          minimum: 0
           type: number
           format: double
+          minimum: 0
+          maximum: 16777214
         ignition_status:
           $ref: '#/components/schemas/IgnitionStatus'
         fuel_level:
-          maximum: 150
-          minimum: 0
           type: number
-          description: percentage fuel remaining level
           format: float
-        fuel_consumed_since_restart:
-          maximum: 4294967295
+          description: percentage fuel remaining level
           minimum: 0
+          maximum: 150
+        fuel_consumed_since_restart:
           type: number
-          description: fuel consumed in litres (this goes to 0 every time the vehicle restarts, like a trip meter)
           format: double
+          description: >-
+            fuel consumed in litres (this goes to 0 every time the vehicle
+            restarts, like a trip meter)
+          minimum: 0
+          maximum: 4294967295
         door_status:
           type: string
           enum:
-          - driver
-          - passenger
-          - rear_left
-          - rear_right
+            - driver
+            - passenger
+            - rear_left
+            - rear_right
         headlamp_status:
           type: string
           enum:
-          - "true"
-          - "false"
+            - 'true'
+            - 'false'
         high_beam_status:
           type: string
           enum:
-          - "true"
-          - "false"
+            - 'true'
+            - 'false'
         windshield_wiper_status:
           type: string
           enum:
-          - "true"
-          - "false"
+            - 'true'
+            - 'false'
         latitude:
           type: number
           format: float
@@ -724,14 +814,14 @@ components:
           type: string
           format: date-time
         accel_x:
-          type: number
-          format: float
+         type: number
+         format: float
         accel_y:
-          type: number
-          format: float
+         type: number
+         format: float
         accel_z:
-          type: number
-          format: float
+         type: number
+         format: float
         gyro_x:
           type: number
           format: float
@@ -742,59 +832,129 @@ components:
           type: number
           format: float
     VehicleNotification:
-      required:
-      - text
       type: object
+      required:
+        - text
       properties:
         text:
           type: string
-          example: Harsh braking detected
+          example: 'Harsh braking detected'
     VehicleID:
-      required:
-      - vehicleId
       type: object
+      required:
+        - vehicleId
       properties:
         vehicleId:
           type: integer
           format: int64
           example: 1
     VehicleExVeResources:
-      required:
-      - resources
       type: object
+      required:
+        - resources
       properties:
         resources:
-          uniqueItems: true
           type: array
+          uniqueItems: true
           items:
-            $ref: '#/components/schemas/VehicleExVeResources_resources'
+            type: object
+            properties:
+              name:
+                type: string
+                example: 'odometers'
+              version:
+                type: string
+                example: '1.0'
+              href:
+                type: string
+                example: '/exve/{vehicleId}/odometers'
     AcceleratorPedalPositions:
-      required:
-      - acceleratorPedalPositions
       type: object
+      required:
+        - acceleratorPedalPositions
       properties:
         acceleratorPedalPositions:
-          uniqueItems: true
           type: array
+          uniqueItems: true
           items:
-            $ref: '#/components/schemas/AcceleratorPedalPositions_acceleratorPedalPositions'
-    Odometers:
-      required:
-      - odometers
+            type: object
+            properties:
+              value:
+                type: integer
+                example: 40
+              units:
+                type: string
+                example: 'percent'
+              timestamp:
+                type: string
+                format: date-time
+    AutomationLevels:
       type: object
+      required:
+        - automationLevels
+      properties:
+        automationLevels:
+          type: array
+          uniqueItems: true
+          items:
+            type: object
+            properties:
+              level:
+                type: integer
+                minimum: 0
+                maximum: 5
+                description: SAE J3016 automation level.
+              timestamp:
+                type: string
+                format: date-time
+    BrakePedalPositions:
+      type: object
+      required:
+        - brakePedalPositions
+      properties:
+        brakePedalPositions:
+          type: array
+          uniqueItems: true
+          items:
+            type: object
+            properties:
+              value:
+                type: integer
+                example: 40
+              units:
+                type: string
+                example: 'percent'
+              timestamp:
+                type: string
+                format: date-time
+    Odometers:
+      type: object
+      required:
+        - odometers
       properties:
         odometers:
-          uniqueItems: true
           type: array
+          uniqueItems: true
           items:
-            $ref: '#/components/schemas/Odometers_odometers'
+            type: object
+            properties:
+              value:
+                type: number
+                example: 1000.25
+              units:
+                type: string
+                example: 'km'
+              timestamp:
+                type: string
+                format: date-time
     LocationChange:
-      required:
-      - latitude
-      - longitude
-      - timestamp
-      - vehicleId
       type: object
+      required:
+        - vehicleId
+        - latitude
+        - longitude
+        - bearing
+        - timestamp
       properties:
         vehicleId:
           type: integer
@@ -805,47 +965,101 @@ components:
         longitude:
           type: number
           example: 11.58485
+        bearing:
+          type: integer
+          example: 45
         timestamp:
           type: string
           format: date-time
     Locations:
-      required:
-      - locations
       type: object
+      required:
+        - locations
       properties:
         locations:
-          uniqueItems: true
           type: array
+          uniqueItems: true
           items:
-            $ref: '#/components/schemas/Locations_locations'
+            type: object
+            required:
+              - latitude
+              - longitude
+              - bearing
+              - timestamp
+            properties:
+              latitude:
+                type: number
+                example: 48.0202599980004
+              longitude:
+                type: number
+                example: 11.58485
+              bearing:
+                type: integer
+                example: 45
+                description: Bearing in degrees.
+              timestamp:
+                type: string
+                format: date-time
     Webhooks:
-      uniqueItems: true
       type: array
-      example:
-      - journey_begin
-      - journey_end
-      - location_changed
-      - ignition_changed
-      - harsh_acceleration
-      - harsh_braking
       items:
         type: string
         enum:
-        - journey_begin
-        - journey_end
-        - location_changed
-        - ignition_changed
-        - harsh_acceleration
-        - harsh_braking
+          - automation_level_changed
+          - driver_changed
+          - journey_begin
+          - journey_end
+          - location_changed
+          - ignition_changed
+          - harsh_acceleration
+          - harsh_braking
+      example: [automation_level_changed, driver_changed, journey_begin, journey_end, location_changed, ignition_changed, harsh_acceleration, harsh_braking]
+      uniqueItems: true
     WebhookSubscription:
-      required:
-      - subscriptionId
       type: object
+      required:
+        - subscriptionId
       properties:
         subscriptionId:
           type: string
           format: uuid
-          example: 3701fac0-391b-4ad7-8392-8cba1ae5feca
+          example: '3701fac0-391b-4ad7-8392-8cba1ae5feca'
+    AutomationLevelChange:
+      type: object
+      properties:
+        vehicleId:
+          type: integer
+          example: 123
+        old_level:
+          type: integer
+          minimum: 0
+          maximum: 5
+          example: 2
+          description: SAE J3016 automation level
+        new_level:
+          type: integer
+          minimum: 0
+          maximum: 5
+          example: 3
+          description: SAE J3016 automation level
+        timestamp:
+          type: string
+          format: date-time
+    DriverChange:
+      type: object
+      properties:
+        vehicleId:
+          type: integer
+          example: 123
+        old_driverId:
+          type: integer
+          example: 456
+        new_driverId:
+          type: integer
+          example: 200
+        timestamp:
+          type: string
+          format: date-time
     JourneyChange:
       type: object
       properties:
@@ -854,29 +1068,36 @@ components:
           example: 123
         driverId:
           type: integer
-          example: 22
+          example: 456
         latitude:
           type: number
           example: 48.0202599980004
         longitude:
           type: number
           example: 11.58485
+        bearing:
+          type: integer
+          example: 45
+          description: Bearing in degrees.
         timestamp:
           type: string
           format: date-time
     IgnitionStatus:
       type: string
       enum:
-      - "false"
-      - accessory
-      - run
-      - start
+        - off
+        - accessory
+        - run
+        - start
     IgnitionChange:
       type: object
       properties:
         vehicleId:
           type: integer
           example: 123
+        driverId:
+          type: integer
+          example: 456
         ignition_start_state:
           $ref: '#/components/schemas/IgnitionStatus'
         ignition_end_state:
@@ -890,6 +1111,9 @@ components:
         vehicleId:
           type: integer
           example: 123
+        driverId:
+          type: integer
+          example: 456
         pedal_start_position:
           type: integer
           description: Pedal position as a percentage
@@ -898,82 +1122,6 @@ components:
           type: integer
           description: Pedal position as a percentage
           example: 95
-        timestamp:
-          type: string
-          format: date-time
-    body:
-      required:
-      - notificationUrl
-      - webhooks
-      type: object
-      properties:
-        webhooks:
-          $ref: '#/components/schemas/Webhooks'
-        notificationUrl:
-          type: string
-          format: uri
-          example: https://myserver/endpoint
-    body_1:
-      required:
-      - notificationUrl
-      - webhooks
-      type: object
-      properties:
-        webhooks:
-          $ref: '#/components/schemas/Webhooks'
-        notificationUrl:
-          type: string
-          format: uri
-          example: https://myserver/endpoint
-    VehicleExVeResources_resources:
-      type: object
-      properties:
-        name:
-          type: string
-          example: odometers
-        version:
-          type: string
-          example: "1.0"
-        href:
-          type: string
-          example: /exve/{vehicleId}/odometers
-    AcceleratorPedalPositions_acceleratorPedalPositions:
-      type: object
-      properties:
-        value:
-          type: integer
-          example: 40
-        units:
-          type: string
-          example: percent
-        timestamp:
-          type: string
-          format: date-time
-    Odometers_odometers:
-      type: object
-      properties:
-        value:
-          type: number
-          example: 1000.25
-        units:
-          type: string
-          example: km
-        timestamp:
-          type: string
-          format: date-time
-    Locations_locations:
-      required:
-      - latitude
-      - longitude
-      - timestamp
-      type: object
-      properties:
-        latitude:
-          type: number
-          example: 48.0202599980004
-        longitude:
-          type: number
-          example: 11.58485
         timestamp:
           type: string
           format: date-time
