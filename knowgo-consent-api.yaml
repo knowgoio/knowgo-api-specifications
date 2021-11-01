@@ -11,9 +11,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   version: 0.0.1
 servers:
-- url: https://virtserver.swaggerhub.com/Adaptant/knowgo-consent-api/0.0.1
-  description: SwaggerHub API Auto Mocking
-- url: https://virtserver.swaggerhub.com/Adaptant/consent/0.0.1
+- url: https://virtserver.swaggerhub.com/KnowGo/knowgo-consent-api/0.0.1
   description: SwaggerHub API Auto Mocking
 - url: https://api.knowgo.io/v1
   description: Production instance
@@ -59,7 +57,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DataCategory'
+                $ref: '#/components/schemas/DataCategoryDetail'
   /consents/introspect:
     post:
       tags:
@@ -69,7 +67,7 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/body'
+              $ref: '#/components/schemas/Token'
       responses:
         "200":
           description: Token valid
@@ -113,7 +111,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Purpose'
+                $ref: '#/components/schemas/PurposeDetail'
   /consents:
     get:
       tags:
@@ -128,7 +126,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ConsentReceipt'
+                  $ref: '#/components/schemas/ConsentReceiptDetail'
     post:
       tags:
       - consent
@@ -243,20 +241,199 @@ paths:
 components:
   schemas:
     ConsentReceipt:
+      type: object
+      required:
+        - version
+        - jurisdiction
+        - collectionMethod
+        - consentReceiptId
+        - piiPrincipalId
+        - piiControllers
+        - policyUrl
+        - services
+        - sensitive
       properties:
-        receiptId:
+        version:
+          type: string
+          description: |
+            The version of the Kantara CR specification that the receipt
+            conforms to.
+          example: 'KI-CR-v1.1.0'
+          enum:
+            - 'KI-CR-v1.1.0'
+        jurisdiction:
+          type: string
+          description: |
+            The legal jurisdiction(s) under which the processing of personal
+            data occurs, in ISO 3166-1 alpha-2 2-character country code format.
+            May be a single jurisdiction, or a list of possible ones separated
+            by a space.
+          example: 'DE AT IT'
+        consentTimestamp:
+          type: integer
+          format: int64
+          description: |
+            Timestamp of when consent was issued, in seconds since the UNIX
+            epoch.
+          example: 1635752562
+        collectionMethod:
+          type: string
+          description: Method of collection describing how consent was obtained
+          example: "web sign-up form"
+        consentReceiptId:
           type: string
           description: Consent Receipt ID
           format: uuid
+          example: '81b5986c-dd92-4fef-b83e-2bc013334610'
+        publicKey:
+          type: string
+          description: The data controller's public key.
+        language:
+          type: string
+          description: |
+            Language in which the consent was obtained. MUST use ISO
+            639-1:2002 if this field is used.
+        piiPrincipalId:
+          type: string
+          description: |
+            PII Principal-provided identifier, such as a user name, email
+            address, or claim.
+        piiControllers:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataController'
+        policyUrl:
+          type: string
+          format: uri
+          description: |
+            Privacy policy URL of the service referred to by the receipt.
+          example: 'https://example.com/privacy-policy/'
+        services:
+          type: array
+          description: |
+            A service or group of services for which PII is being collected,
+            together with service-specific purposes of processing.
+          items:
+            $ref: '#/components/schemas/Service'
+        sensitive:
+          type: boolean
+          description: |
+            Indicates whether the consent interaction contains PII that is
+            designated as sensitive.
+        spiCat:
+          type: array
+          items:
+            type: string
+            description: List of sensitive or special-category data categories
+            example: '2 - Biometric'
+    ConsentReceiptDetail:
+      properties:
+        consentReceiptId:
+          type: string
+          description: Consent Receipt ID
+          format: uuid
+          example: '81b5986c-dd92-4fef-b83e-2bc013334610'
+        status:
+          $ref: '#/components/schemas/ConsentStatus'
+    ConsentStatus:
+      type: string
+      description: Possible consent states
+      enum:
+        - ACTIVE
+        - REVOKED
+        - SUPERSEDED
+        - EXPIRED
+    ConsentType:
+      type: string
+      description: Possible consent types
+      enum:
+        - EXPLICIT
+        - IMPLICIT
+        - N/A
     DataCategory:
+      type: string
+      enum:
+        - Biographical
+        - Contact
+        - Biometric
+        - SocialContact
+        - NetworkService
+        - Health
+        - Financial
+        - OfficialID
+        - SocialBenefitData
+        - JudicialData
+        - AssetData
+        - HRData
+        - MentalHealth
+        - Membership
+        - Behavioral
+        - Profiling
+    DataCategoryDetail:
       properties:
         categoryId:
           type: integer
           description: ID of data category
         category:
+          $ref: '#/components/schemas/DataCategory'
+    DataController:
+      type: object
+      required:
+        - piiController
+        - onBehalf
+        - contact
+        - address
+        - email
+        - phone
+      properties:
+        piiController:
           type: string
-          description: Name of data category
-    Purpose:
+          description: Legal name of the first controller who collects the data
+        onBehalf:
+          type: boolean
+          description: |
+            Data processor working on behalf of a data controller or other data
+            processor.
+        contact:
+          type: string
+          description: Contact name of the controller
+        address:
+          $ref: '#/components/schemas/PostalAddress'
+        email:
+          type: string
+          format: email
+          description: An email address at which the controller can be reached
+        phone:
+          type: string
+          description: A phone number at which the controller can be reached
+        piiControllerURL:
+          type: string
+          format: uri
+          description: An optional URL for the controller's website
+    PostalAddress:
+      type: object
+      description: |
+        The postal address at which a data controller or processor can be
+        reached.
+      required:
+        - addressCountry
+        - addressLocality
+        - postalCode
+        - streetAddress
+      properties:
+        addressCountry:
+          type: string
+        addressLocality:
+          type: string
+        addressRegion:
+          type: string
+        postOfficeBoxNumber:
+          type: string
+        postalCode:
+          type: string
+        streetAddress:
+          type: string
+    PurposeDetail:
       properties:
         purposeId:
           type: integer
@@ -267,7 +444,66 @@ components:
         description:
           type: string
           description: Description of purpose
-    body:
+    PurposeModel:
+      type: object
+      required:
+        - purpose
+        - purposeCategory
+        - consentType
+        - piiCategory
+        - primaryPurpose
+        - termination
+        - thirdPartyDisclosure
+      properties:
+        purpose:
+          type: string
+        purposeCategory:
+          $ref: '#/components/schemas/PurposeSpecification'
+        consentType:
+          $ref: '#/components/schemas/ConsentType'
+        piiCategory:
+          $ref: '#/components/schemas/DataCategory'
+        primaryPurpose:
+          type: boolean
+        termination:
+          type: string
+        thirdPartyDisclosure:
+          type: boolean
+        thirdPartyName:
+          type: string
+    PurposeSpecification:
+      type: string
+      enum:
+        - CoreFunction
+        - ContractedService
+        - Delivery
+        - ContactRequested
+        - PersonalizedExperience
+        - Marketing
+        - MarketingThirdParties
+        - SharingForDelivery
+        - SharingForMarketing
+        - ThirdPartySharingForCoreFunction
+        - ThirdPartySharingForOthers
+        - LegallyRequiredDataRetention
+        - RequiredByLawEnforcementOrGovernment
+        - ProtectingYourHealth
+        - ProtectingOurInterests
+        - ImprovePerformance
+    Service:
+      type: object
+      required:
+        - service
+        - purposes
+      properties:
+        service:
+          type: string
+          description: Service identifier
+        purposes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurposeModel'
+    Token:
       required:
       - token
       type: object
